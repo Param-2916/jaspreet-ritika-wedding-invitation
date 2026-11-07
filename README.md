@@ -13,7 +13,8 @@ Standalone React + Vite wedding invitation website for Jaspreet Singh & Ritika.
 ## Assets
 
 - `public/assets/jr-monogram.png` — transparent J & R monogram.
-- `public/assets/music.mp3` — optional future background music. Add this file when selected; the player is already wired to this path.
+- `public/assets/music.mp3` — background music that starts when the invitation is opened.
+- Pre-wedding photographs are not included yet; the gallery displays clearly labeled placeholders until the couple's photos are added.
 
 ## Content to verify before publishing
 
