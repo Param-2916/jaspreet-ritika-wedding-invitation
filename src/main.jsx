@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import {
   ArrowDown,
   ArrowDownRight,
-  Check,
+  Camera,
+  ChevronLeft,
+  ChevronRight,
   Instagram,
   MapPin,
   MessageCircle,
   Music2,
   Volume2,
   VolumeX,
+  X,
 } from 'lucide-react';
 import './style.css';
 
 const WEDDING_DATE = new Date('2026-11-15T00:00:00+05:30').getTime();
+const MUSIC_VOLUME = 0.75;
 const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`;
 const RSVP_MESSAGE = "Hello! We are delighted to celebrate Jaspreet and Ritika's wedding. Please count us in!";
 const INVITATION_VERSE = [
@@ -33,6 +38,12 @@ const celebrations = [
   { day: 'SUNDAY', date: '15', month: 'NOVEMBER 2026', name: 'Wedding Ceremony', place: 'Pearl Green Palace' },
 ];
 
+const galleryPhotos = [
+  { title: 'A moment together', description: 'Pre-wedding photograph placeholder' },
+  { title: 'In the golden hour', description: 'Pre-wedding photograph placeholder' },
+  { title: 'Before forever', description: 'Pre-wedding photograph placeholder' },
+];
+
 function Monogram({ className = '' }) {
   const [imageAvailable, setImageAvailable] = useState(true);
 
@@ -49,107 +60,12 @@ function Monogram({ className = '' }) {
 }
 
 function Intro({ onEnter, onExitComplete, isLeaving }) {
-  const canvasRef = useRef(null);
-  const drawingRef = useRef(false);
-  const revealTriggeredRef = useRef(false);
-  const autoTransitionRef = useRef(null);
-  const onEnterRef = useRef(onEnter);
-  onEnterRef.current = onEnter;
-  const [revealed, setRevealed] = useState(false);
-  const [canvasRemoved, setCanvasRemoved] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-
-    const paintSurface = () => {
-      const bounds = canvas.getBoundingClientRect();
-      const pixelRatio = window.devicePixelRatio || 1;
-      canvas.width = Math.round(bounds.width * pixelRatio);
-      canvas.height = Math.round(bounds.height * pixelRatio);
-      const context = canvas.getContext('2d');
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      context.globalCompositeOperation = 'source-over';
-      context.fillStyle = '#a6533d';
-      context.fillRect(0, 0, bounds.width, bounds.height);
-      context.fillStyle = '#e6d2b5';
-      context.font = '600 10px Manrope, sans-serif';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText('SCRATCH TO REVEAL THE DATE', bounds.width / 2, bounds.height / 2);
-      context.globalCompositeOperation = 'destination-out';
-    };
-
-    paintSurface();
-    const observer = new ResizeObserver(paintSurface);
-    observer.observe(canvas);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!revealed) return undefined;
-    const clearCanvasTimer = window.setTimeout(() => setCanvasRemoved(true), 430);
-    autoTransitionRef.current = window.setTimeout(() => onEnterRef.current(), 1950);
-    return () => {
-      window.clearTimeout(clearCanvasTimer);
-      window.clearTimeout(autoTransitionRef.current);
-    };
-  }, [revealed]);
-
-  const revealDate = () => {
-    if (revealTriggeredRef.current) return;
-    revealTriggeredRef.current = true;
-    setRevealed(true);
-  };
-
-  const enterManually = () => {
-    window.clearTimeout(autoTransitionRef.current);
-    onEnter();
-  };
-
-  const scratch = (event) => {
-    const canvas = canvasRef.current;
-    if (!canvas || revealTriggeredRef.current) return;
-    const bounds = canvas.getBoundingClientRect();
-    const context = canvas.getContext('2d');
-    context.beginPath();
-    context.arc(event.clientX - bounds.left, event.clientY - bounds.top, 25, 0, Math.PI * 2);
-    context.fill();
-  };
-
-  const finishScratch = () => {
-    drawingRef.current = false;
-    const canvas = canvasRef.current;
-    if (!canvas || revealTriggeredRef.current) return;
-    const context = canvas.getContext('2d');
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    let transparent = 0;
-    for (let index = 3; index < pixels.length; index += 4) {
-      if (pixels[index] < 32) transparent += 1;
-    }
-    if (transparent / (pixels.length / 4) >= 0.68) revealDate();
-  };
-
-  const startScratch = (event) => {
-    if (revealTriggeredRef.current) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    drawingRef.current = true;
-    scratch(event);
-  };
-
-  const moveScratch = (event) => {
-    if (!drawingRef.current) return;
-    event.preventDefault();
-    scratch(event);
-  };
-
   return (
     <section
       className={`intro-screen${isLeaving ? ' is-leaving' : ''}`}
       role="dialog"
       aria-modal="true"
-      aria-label="Wedding date reveal"
+      aria-label="Wedding invitation"
       onAnimationEnd={(event) => {
         if (event.target === event.currentTarget && event.animationName === 'intro-exit') onExitComplete();
       }}
@@ -158,32 +74,10 @@ function Intro({ onEnter, onExitComplete, isLeaving }) {
       <div className="intro-frame">
         <p className="intro-wordmark">SAANJH <span>·</span> A PUNJABI WEDDING STORY</p>
         <Monogram className="intro-monogram" />
-        <p className="intro-instruction">Scratch to reveal our wedding date</p>
-        <div className={`scratch-card${revealed ? ' is-revealed' : ''}`}>
-          <span className="scratch-date" aria-live="polite">15 NOVEMBER 2026</span>
-          {!canvasRemoved && (
-            <canvas
-              ref={canvasRef}
-              className={`scratch-surface${revealed ? ' is-clearing' : ''}`}
-              aria-hidden="true"
-              onPointerDown={startScratch}
-              onPointerMove={moveScratch}
-              onPointerUp={finishScratch}
-              onPointerCancel={finishScratch}
-              onLostPointerCapture={finishScratch}
-            />
-          )}
-        </div>
-        {!revealed ? (
-          <button className="intro-keyboard-action" onClick={revealDate}>
-            <Check size={14} aria-hidden="true" /> Reveal date
-          </button>
-        ) : (
-          <button className="intro-enter" onClick={enterManually}>
-            Enter the celebration <ArrowDown size={15} aria-hidden="true" />
-          </button>
-        )}
-        <button className="skip-intro" onClick={enterManually}>Skip intro <ArrowDownRight size={13} aria-hidden="true" /></button>
+        <p className="intro-instruction">A celebration of love, family &amp; tradition</p>
+        <button className="intro-enter" onClick={onEnter}>
+          OPEN INVITATION <ArrowDown size={15} aria-hidden="true" />
+        </button>
       </div>
     </section>
   );
@@ -199,6 +93,7 @@ function SiteHeader({ onToggleMusic, musicPlaying, isLocked }) {
       <nav aria-label="Main navigation">
         <a href="#invitation">Invitation</a>
         <a href="#events">Celebrations</a>
+        <a href="#gallery">Gallery</a>
         <a href="#venue">Venue</a>
         <a href="#rsvp">RSVP</a>
       </nav>
@@ -319,6 +214,85 @@ function Events() {
   );
 }
 
+function PhotoPlaceholder({ photo, className = '' }) {
+  return (
+    <div className={`photo-placeholder ${className}`}>
+      <span className="photo-placeholder-number" aria-hidden="true">SAANJH · 0{galleryPhotos.indexOf(photo) + 1}</span>
+      <Camera size={30} strokeWidth={1} aria-hidden="true" />
+      <span className="photo-placeholder-title">{photo.title}</span>
+      <span className="photo-placeholder-note">{photo.description}</span>
+    </div>
+  );
+}
+
+function Gallery() {
+  const [selectedIndex, setSelectedIndex] = useState(null);
+
+  useEffect(() => {
+    if (selectedIndex === null) return undefined;
+    const closeOnKey = (event) => {
+      if (event.key === 'Escape') setSelectedIndex(null);
+      if (event.key === 'ArrowLeft') {
+        setSelectedIndex((current) => (current - 1 + galleryPhotos.length) % galleryPhotos.length);
+      }
+      if (event.key === 'ArrowRight') {
+        setSelectedIndex((current) => (current + 1) % galleryPhotos.length);
+      }
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeOnKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnKey);
+    };
+  }, [selectedIndex]);
+
+  const showPrevious = () => {
+    setSelectedIndex((current) => (current - 1 + galleryPhotos.length) % galleryPhotos.length);
+  };
+  const showNext = () => {
+    setSelectedIndex((current) => (current + 1) % galleryPhotos.length);
+  };
+
+  return (
+    <section className="gallery section" id="gallery" aria-labelledby="gallery-title">
+      <SectionHeading eyebrow="BEFORE THE BIG DAY" title="A Glimpse Before Forever" detail="A few moments from the beginning of our forever." titleId="gallery-title" />
+      <div className="gallery-grid">
+        {galleryPhotos.map((photo, index) => (
+          <button
+            className={`gallery-item gallery-item-${index + 1}`}
+            key={photo.title}
+            onClick={() => setSelectedIndex(index)}
+            aria-label={`Open ${photo.description.toLowerCase()} ${index + 1}`}
+          >
+            <PhotoPlaceholder photo={photo} />
+            <span className="gallery-open-label">VIEW MOMENT <ArrowDownRight size={13} aria-hidden="true" /></span>
+          </button>
+        ))}
+      </div>
+      {selectedIndex !== null && createPortal(
+        <div className="lightbox" role="dialog" aria-modal="true" aria-label="Pre-wedding photo gallery" onClick={() => setSelectedIndex(null)}>
+          <button className="lightbox-close" onClick={() => setSelectedIndex(null)} aria-label="Close gallery">
+            <X size={21} aria-hidden="true" />
+          </button>
+          <button className="lightbox-previous" onClick={(event) => { event.stopPropagation(); showPrevious(); }} aria-label="Previous photo">
+            <ChevronLeft size={25} aria-hidden="true" />
+          </button>
+          <div className="lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <PhotoPlaceholder photo={galleryPhotos[selectedIndex]} className="lightbox-placeholder" />
+            <p className="lightbox-caption">{galleryPhotos[selectedIndex].title} <span>· {selectedIndex + 1} / {galleryPhotos.length}</span></p>
+          </div>
+          <button className="lightbox-next" onClick={(event) => { event.stopPropagation(); showNext(); }} aria-label="Next photo">
+            <ChevronRight size={25} aria-hidden="true" />
+          </button>
+        </div>,
+        document.body,
+      )}
+    </section>
+  );
+}
+
 function WeddingJourney() {
   return (
     <section className="journey-section section" aria-labelledby="journey-title">
@@ -409,26 +383,19 @@ function StudioCredit({ isLocked }) {
   );
 }
 
-function MusicControls({ audioRef, musicPlaying, setMusicPlaying, muted, setMuted, isLocked }) {
-  const [audioAvailable, setAudioAvailable] = useState(true);
-
+function MusicControls({ audioRef, audioAvailable, onAudioError, onToggleMusic, musicPlaying, muted, setMuted, isLocked }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioAvailable) return;
-    audio.volume = 0.32;
+    audio.volume = MUSIC_VOLUME;
     audio.muted = muted;
-    if (musicPlaying) {
-      audio.play().catch(() => setMusicPlaying(false));
-    } else {
-      audio.pause();
-    }
-  }, [audioRef, audioAvailable, musicPlaying, muted, setMusicPlaying]);
+  }, [audioRef, audioAvailable, muted]);
 
   return (
     <>
-      <audio ref={audioRef} src={assetUrl('assets/music.mp3')} loop preload="none" onError={() => setAudioAvailable(false)} />
+      <audio ref={audioRef} src={assetUrl('assets/music.mp3')} loop preload="none" onError={onAudioError} />
       <div className="audio-controls" aria-label="Background music controls" inert={isLocked}>
-        <button onClick={() => setMusicPlaying(!musicPlaying)} disabled={!audioAvailable} aria-label={musicPlaying ? 'Pause background music' : 'Play background music'} title={audioAvailable ? (musicPlaying ? 'Pause music' : 'Play music') : 'Add public/assets/music.mp3 to enable music'}>
+        <button onClick={onToggleMusic} disabled={!audioAvailable} aria-label={musicPlaying ? 'Pause background music' : 'Play background music'} title={audioAvailable ? (musicPlaying ? 'Pause music' : 'Play music') : 'Background music is not available'}>
           <Music2 size={17} aria-hidden="true" />
         </button>
         <button onClick={() => setMuted(!muted)} disabled={!audioAvailable} aria-label={muted ? 'Unmute background music' : 'Mute background music'} title={muted ? 'Unmute music' : 'Mute music'}>
@@ -445,6 +412,7 @@ function App() {
   const transitionStartedRef = useRef(false);
   const [musicPlaying, setMusicPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
+  const [audioAvailable, setAudioAvailable] = useState(true);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -467,6 +435,33 @@ function App() {
     setIntroLeaving(true);
   };
 
+  const startMusic = () => {
+    const audio = audioRef.current;
+    if (!audio || !audioAvailable) return;
+    audio.volume = MUSIC_VOLUME;
+    audio.muted = muted;
+    const playback = audio.play();
+    if (playback) {
+      playback.then(() => setMusicPlaying(true)).catch(() => setMusicPlaying(false));
+    }
+  };
+
+  const toggleMusic = () => {
+    const audio = audioRef.current;
+    if (!audio || !audioAvailable) return;
+    if (musicPlaying) {
+      audio.pause();
+      setMusicPlaying(false);
+    } else {
+      startMusic();
+    }
+  };
+
+  const openInvitation = () => {
+    startMusic();
+    enterInvitation();
+  };
+
   const completeIntroExit = () => {
     setIntroVisible(false);
     if (window.scrollY > 0) {
@@ -477,20 +472,33 @@ function App() {
 
   return (
     <>
-      {introVisible && <Intro onEnter={enterInvitation} onExitComplete={completeIntroExit} isLeaving={introLeaving} />}
-      <SiteHeader onToggleMusic={() => setMusicPlaying(!musicPlaying)} musicPlaying={musicPlaying} isLocked={introVisible} />
+      {introVisible && <Intro onEnter={openInvitation} onExitComplete={completeIntroExit} isLeaving={introLeaving} />}
+      <SiteHeader onToggleMusic={toggleMusic} musicPlaying={musicPlaying} isLocked={introVisible} />
       <main inert={introVisible}>
         <Hero isEntering={introLeaving} />
         <Invitation />
         <Countdown />
         <Events />
+        <Gallery />
         <WeddingJourney />
         <Venue />
         <RSVP />
       </main>
       <Footer isLocked={introVisible} />
       <StudioCredit isLocked={introVisible} />
-      <MusicControls audioRef={audioRef} musicPlaying={musicPlaying} setMusicPlaying={setMusicPlaying} muted={muted} setMuted={setMuted} isLocked={introVisible} />
+      <MusicControls
+        audioRef={audioRef}
+        audioAvailable={audioAvailable}
+        onAudioError={() => {
+          setAudioAvailable(false);
+          setMusicPlaying(false);
+        }}
+        onToggleMusic={toggleMusic}
+        musicPlaying={musicPlaying}
+        muted={muted}
+        setMuted={setMuted}
+        isLocked={introVisible}
+      />
     </>
   );
 }
