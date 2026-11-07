@@ -39,9 +39,9 @@ const celebrations = [
 ];
 
 const galleryPhotos = [
-  { title: 'A moment together', description: 'Pre-wedding photograph placeholder' },
-  { title: 'In the golden hour', description: 'Pre-wedding photograph placeholder' },
-  { title: 'Before forever', description: 'Pre-wedding photograph placeholder' },
+  { title: 'A moment together', description: 'Pre-wedding photograph', src: 'assets/prewedding-1.jpg' },
+  { title: 'In the golden hour', description: 'Pre-wedding photograph', src: 'assets/prewedding-2.jpg' },
+  { title: 'Before forever', description: 'Pre-wedding photograph', src: 'assets/prewedding-3.jpg' },
 ];
 
 function Monogram({ className = '' }) {
@@ -225,6 +225,21 @@ function PhotoPlaceholder({ photo, className = '' }) {
   );
 }
 
+function GalleryPhoto({ photo, className = '' }) {
+  const [imageAvailable, setImageAvailable] = useState(true);
+
+  if (!imageAvailable) return <PhotoPlaceholder photo={photo} className={className} />;
+
+  return (
+    <img
+      className={`gallery-photo ${className}`}
+      src={assetUrl(photo.src)}
+      alt={photo.title}
+      onError={() => setImageAvailable(false)}
+    />
+  );
+}
+
 function Gallery() {
   const [selectedIndex, setSelectedIndex] = useState(null);
 
@@ -266,7 +281,7 @@ function Gallery() {
             onClick={() => setSelectedIndex(index)}
             aria-label={`Open ${photo.description.toLowerCase()} ${index + 1}`}
           >
-            <PhotoPlaceholder photo={photo} />
+            <GalleryPhoto photo={photo} />
             <span className="gallery-open-label">VIEW MOMENT <ArrowDownRight size={13} aria-hidden="true" /></span>
           </button>
         ))}
@@ -280,7 +295,7 @@ function Gallery() {
             <ChevronLeft size={25} aria-hidden="true" />
           </button>
           <div className="lightbox-content" onClick={(event) => event.stopPropagation()}>
-            <PhotoPlaceholder photo={galleryPhotos[selectedIndex]} className="lightbox-placeholder" />
+            <GalleryPhoto photo={galleryPhotos[selectedIndex]} className="lightbox-photo" />
             <p className="lightbox-caption">{galleryPhotos[selectedIndex].title} <span>· {selectedIndex + 1} / {galleryPhotos.length}</span></p>
           </div>
           <button className="lightbox-next" onClick={(event) => { event.stopPropagation(); showNext(); }} aria-label="Next photo">
